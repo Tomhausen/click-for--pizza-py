@@ -5,15 +5,15 @@ class SpriteKind:
 # bh2
     upgrade_click = SpriteKind.create()
 # /bh2
+# gh2
+    upgrade = SpriteKind.create()
+# /gh2
 
 # variables
 pizza_per_click = 1
 pizza_per_second = 0
 mouse_x = 0
 mouse_y = 0
-# bh5
-buttons_to_reset: List[Sprite] = []
-# /bh5
 store_items: List[str] = [
     "NEW TOPPINGS",
     "MORE OVENS",
@@ -27,16 +27,27 @@ starting_cost = [
     10,
     100,
     1000,
-    10000,
+    5000,
 # bh4
-    100000
+    10000
 # /bh4
 ]
 passive_increase_values = [1, 2, 5, 10, 20] # bh4
+# gh2
+upgrade_costs = [
+    100,
+    500,
+    5000,
+    10000,
+# bh4
+    20000
+# /bh4
+]
+# /gh2
 
 # sprites
 pizza_button = sprites.create(assets.image("pizza"), SpriteKind.player)
-pizza_button.x = 143
+pizza_button.set_position(143, 50)
 pizza_per_second_sprite = textsprite.create(str(pizza_per_second), 3, 1)
 pizza_per_second_sprite.set_border(2, 3)
 pizza_per_second_sprite.y = 20
@@ -44,12 +55,12 @@ pizza_per_second_sprite.right = 162
 # bh2
 click_upgrade_button = sprites.create(assets.image("upgrade"), SpriteKind.upgrade_click)
 click_upgrade_button.scale = 2
-click_upgrade_button.set_position(143, 90)
+click_upgrade_button.set_position(143, 80)
 sprites.set_data_number(click_upgrade_button, "cost", 100)
 # /bh2
 
 # setup
-info.set_score(0)
+info.set_score(100000)
 scene.set_background_color(1)
 
 # bh2
@@ -58,7 +69,7 @@ def make_click_upgrade_cost_display():
         sprites.read_data_sprite(click_upgrade_button, "cost_display").destroy()
     cost = sprites.read_data_number(click_upgrade_button, "cost")
     click_upgrade_cost_display = textsprite.create(str(cost), 5, 2)
-    click_upgrade_cost_display.set_position(143, 110)
+    click_upgrade_cost_display.set_position(143, 100)
 make_click_upgrade_cost_display()
 # /bh2
 
@@ -76,6 +87,23 @@ def make_cost_display(button: Sprite):
     cost_text.right = 80
     return cost_text
 
+# gh2
+def setup_upgrade_price(button: Sprite):
+    cost = sprites.read_data_number(button, "upgrade_cost")
+    upgrade_price = textsprite.create(str(cost), 5, 2)
+    upgrade_price.set_position(110, button.y + 10)
+    return upgrade_price
+
+def setup_upgrade_button(button: Sprite, upgrade_cost):
+    upgrade_button = sprites.create(assets.image("upgrade"), SpriteKind.upgrade)
+    upgrade_button.set_position(110, button.y)
+    sprites.set_data_number(upgrade_button, "upgrade_cost", upgrade_cost)
+    sprites.set_data_sprite(upgrade_button, "shop_item", button) # when we buy we need this to change the effectiveness
+    sprites.set_data_sprite(upgrade_button, "upgrade_cost_display", setup_upgrade_price(upgrade_button))
+    return upgrade_button
+# /gh2
+# pps needs to be sum
+
 def setup_buttons():
     y = 10
     for i in range(len(store_items)):
@@ -86,7 +114,10 @@ def setup_buttons():
         buy_button.left = 5
         sprites.set_data_number(buy_button, "quantity", 0)
         sprites.set_data_number(buy_button, "cost", starting_cost[i])
-        sprites.set_data_number(buy_button, "passive_increase_values", passive_increase_values[i])
+        sprites.set_data_number(buy_button, "passive_increase_value", passive_increase_values[i])
+# gh2
+        upgrade_button = setup_upgrade_button(buy_button, upgrade_costs[i])
+# /gh2
         sprites.set_data_sprite(buy_button, "quantity_text", make_quantity_display(buy_button))
         sprites.set_data_sprite(buy_button, "cost_text", make_cost_display(buy_button))
         y += 20
@@ -121,8 +152,6 @@ def mouse_over_button():
     temp_collider.set_position(mouse_x, mouse_y)
     if temp_collider.overlaps_with(pizza_button):
         pizza_button.scale = 1.1
-        if not browserEvents.mouse_left.is_pressed():
-            pizza_button.scale = 0.9
     else:
         pizza_button.scale = 1
     temp_collider.destroy()
@@ -154,9 +183,6 @@ def buy_more(collider, button):
         sprites.change_data_number_by(button, "cost", (cost // 10) + 1)
         sprites.read_data_sprite(button, "cost_text").destroy()
         sprites.set_data_sprite(button, "cost_text", make_cost_display(button))
-        pizza_per_second += sprites.read_data_number(button, "passive_increase_values")
-        pizza_per_second_sprite.set_text(str(pizza_per_second))
-        pizza_per_second_sprite.right = 162
     collider.destroy()
 sprites.on_overlap(SpriteKind.collider, SpriteKind.buy, buy_more)
 
@@ -170,9 +196,32 @@ def upgrade_click(collider, button):
         pizza_per_click *= 2
         sprites.set_data_number(button, "cost", cost * 10)
         make_click_upgrade_cost_display()
+        info.change_score_by(-cost)
     collider.destroy()
 sprites.on_overlap(SpriteKind.collider, SpriteKind.upgrade_click, upgrade_click)
 # /bh2
+
+# gh2
+def buy_upgrade(collider, button):
+    cost = sprites.read_data_number(button, "upgrade_cost")
+    if cost > info.score():
+        music.buzzer.play()
+    else:
+        shop_item = sprites.read_data_sprite(button, "shop_item")
+        passive_value = sprites.read_data_number(shop_item, "passive_increase_value")
+        sprites.change_data_number_by(shop_item, "passive_increase_value", passive_value)
+        info.change_score_by(-cost)
+    collider.destroy()
+sprites.on_overlap(SpriteKind.collider, SpriteKind.upgrade, buy_upgrade)
+# /gh2
+
+# bh6
+def collect_ice_cream(collider, ice_cream):
+    info.change_score_by((pizza_per_second + 1) * 120)
+    ice_cream.set_velocity(0, 0)
+    ice_cream.destroy(effects.hearts, 2000)
+sprites.on_overlap(SpriteKind.collider, SpriteKind.food, collect_ice_cream)
+# /bh6
 
 def mouse_move(x, y):
     global mouse_x, mouse_y
@@ -181,6 +230,14 @@ def mouse_move(x, y):
 browserEvents.on_mouse_move(mouse_move)
 
 def passive_loop():
+    global pizza_per_second
+    pizza_per_second = 0
+    for button in sprites.all_of_kind(SpriteKind.buy):
+        quantity = sprites.read_data_number(button, "quantity")
+        value = sprites.read_data_number(button, "passive_increase_value")
+        pizza_per_second += quantity * value
+    pizza_per_second_sprite.set_text(str(pizza_per_second))
+    pizza_per_second_sprite.right = 162
     info.change_score_by(pizza_per_second)
 game.on_update_interval(1000, passive_loop)
 
@@ -199,16 +256,28 @@ def falling_pizza():
 game.on_update_interval(2000, falling_pizza)
 # /bh1
 
+#bh6
+def spawn_ice_cream():
+    vx = (randint(0, 1) * 100) - 50
+    vy = (randint(0, 1) * 100) - 50
+    ice_cream = sprites.create_projectile_from_side(assets.image("ice cream"), vx, vy)
+    ice_cream.set_kind(SpriteKind.food)
+    ice_cream.z = 100
+    timer.after(randint(45000, 75000), spawn_ice_cream)
+timer.after(randint(45000, 75000), spawn_ice_cream)
+# /bh6
 
-# bh3 animate click
+# bh3 animate click w/ pizza
 # bh1 pizza falling
 # bh2 upgrade per click - could be the guided
 # db? if not show how much a click is worth
 
+# gh2 upgrade a type of thing you've bought - could this be the guided
 # bh4 more things you can buy
-# bh5 button affordance - the clicking is funky
-# upgrade a type of thing you've bought
-# achievements
+# bh5 button affordance
+# bh6 random ice cream that flies in
 
-# random star that flies in
+
+# achievements or database
+
 

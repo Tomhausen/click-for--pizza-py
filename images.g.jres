@@ -9,6 +9,11 @@
         "mimeType": "image/x-mkcd-f4",
         "displayName": "upgrade"
     },
+    "image3": {
+        "data": "hwQQABAAAAAAAAAAAEREAAAAM0tEXVUEADARvdTdVUUA0xERvVVdRTDdHRHRW9VFExHRERG91QQTEREdEbHdBNsREdER0dsEM90R0RERSwDT0R0RERFLAB0RHREdEb0AHRHRER0RPQATHRERHdEDABMzG9E7MwAAMDEwMwsAAAAAMwAAAAAAAA==",
+        "mimeType": "image/x-mkcd-f4",
+        "displayName": "ice cream"
+    },
     "*": {
         "mimeType": "image/x-mkcd-f4",
         "dataEncoding": "base64",
